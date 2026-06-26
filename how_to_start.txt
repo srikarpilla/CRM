@@ -1,0 +1,48 @@
+I will view the `start.bat` file in the workspace directory to understand the project's startup commands.
+
+Viewed start.bat:1-29
+
+Here are the step-by-step instructions to run the RefundAI application:
+
+### 1. Prerequisites & API Configuration
+First, make sure you have your API keys configured in the `.env` file at the root of the project:
+1. If not already present, create a copy of the example file:
+   ```powershell
+   copy .env.example .env
+   ```
+2. Open the `.env` file and set the keys:
+   * `COHERE_API_KEY`: Required for the agent loop reasoning engine.
+   * `GROQ_API_KEY`: Optional; set this if you want to test the microphone/voice transcription feature.
+
+---
+
+### 2. Running the Application
+A virtual environment has already been prepared for you. You can start the server using one of the following methods:
+
+#### Method A: Using the Startup Batch File (Windows)
+Double-click [start.bat](file:///d:/CRM/start.bat) or run it from your command line:
+```powershell
+.\start.bat
+```
+
+#### Method B: Manual Command Line Execution
+If you prefer running commands manually, activate the virtual environment and launch the FastAPI server via Uvicorn:
+```powershell
+# Activate virtual environment
+.\venv\Scripts\activate
+
+# Start the uvicorn server
+python -m uvicorn backend.main:app --reload --port 8000 --host 0.0.0.0
+```
+
+Once running, access the web pages in your browser:
+* **Customer Support Chat**: [http://localhost:8000](http://localhost:8000)
+* **Admin Dashboard (Real-time Reasoning Logs)**: [http://localhost:8000/admin](http://localhost:8000/admin)
+
+---
+
+### 3. Running the Automated Scenario Verification Tests
+To run the automated verification script that tests all 11 policy scenarios:
+```powershell
+.\venv\Scripts\python -u "C:\Users\Srikar\.gemini\antigravity-ide\brain\33d971ad-e238-4e6e-aa41-e7dff33d7090\scratch\verify_agent.py"
+```

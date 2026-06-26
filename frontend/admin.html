@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RefundAI — Admin Dashboard</title>
+  <meta name="description" content="Real-time agent reasoning logs and CRM overview for RefundAI support operations." />
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    /* ── Admin layout ────────────────────────────────────── */
+    .admin-page {
+      padding-top: 60px;
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    .admin-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr 340px;
+      grid-template-rows: auto 1fr;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      height: calc(100vh - 60px);
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ── Stats row ───────────────────────────────────────── */
+    .stats-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-3);
+    }
+
+    .stat-card {
+      padding: var(--space-4) var(--space-5);
+      border-radius: var(--radius-lg);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+      transition: border-color var(--transition-fast);
+    }
+    .stat-card:hover { border-color: var(--border-strong); }
+
+    .stat-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stat-value {
+      font-size: 1.625rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+
+    .stat-change {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* ── Sessions panel (left) ───────────────────────────── */
+    .sessions-panel {
+      border-radius: var(--radius-lg);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      padding: var(--space-4) var(--space-5);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-weight: 600;
+      font-size: 0.9375rem;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    /* Session item */
+    .session-item {
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .session-item:hover { border-color: var(--border-default); background: rgba(255,255,255,0.03); }
+    .session-item.active {
+      border-color: var(--brand-primary);
+      background: rgba(245, 158, 11, 0.06);
+    }
+
+    .session-id-text {
+      font-size: 0.75rem;
+      font-family: var(--font-mono);
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session-meta {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    .session-meta-chip {
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+      background: rgba(255,255,255,0.06);
+      font-size: 0.6875rem;
+      color: var(--text-secondary);
+    }
+
+    .no-sessions {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-3);
+      color: var(--text-muted);
+      text-align: center;
+      padding: var(--space-8);
+    }
+
+    .no-sessions-icon { font-size: 2rem; opacity: 0.4; }
+    .no-sessions-text { font-size: 0.875rem; }
+
+    /* ── Reasoning log (center) ──────────────────────────── */
+    .reasoning-panel {
+      border-radius: var(--radius-lg);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    #reasoning-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-4);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    /* Event cards */
+    .event-card {
+      border-radius: var(--radius-md);
+      border: 1px solid;
+      padding: var(--space-3) var(--space-4);
+      animation: fade-in-up 200ms var(--ease-out) both;
+    }
+
+    .event-card-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      margin-bottom: 6px;
+    }
+
+    .event-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+
+    .event-name {
+      font-size: 0.8125rem;
+      font-weight: 600;
+    }
+
+    .event-iter {
+      margin-left: auto;
+      font-size: 0.6875rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .event-payload {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      line-height: 1.7;
+      color: var(--text-secondary);
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    /* Color coding per event type */
+    .event-thinking  { border-color: rgba(139, 92, 246, 0.25); background: rgba(139, 92, 246, 0.05); }
+    .event-thinking .event-icon  { background: rgba(139, 92, 246, 0.2); }
+    .event-thinking .event-name  { color: #a78bfa; }
+
+    .event-tool_call.lookup_customer { border-color: rgba(59,130,246,0.25); background: rgba(59,130,246,0.05); }
+    .event-tool_call.lookup_customer .event-icon { background: rgba(59,130,246,0.2); }
+    .event-tool_call.lookup_customer .event-name { color: var(--tool-lookup); }
+
+    .event-tool_call.get_order_details { border-color: rgba(139,92,246,0.25); background: rgba(139,92,246,0.05); }
+    .event-tool_call.get_order_details .event-icon { background: rgba(139,92,246,0.2); }
+    .event-tool_call.get_order_details .event-name { color: #a78bfa; }
+
+    .event-tool_call.check_refund_eligibility { border-color: rgba(245,158,11,0.25); background: rgba(245,158,11,0.05); }
+    .event-tool_call.check_refund_eligibility .event-icon { background: rgba(245,158,11,0.2); }
+    .event-tool_call.check_refund_eligibility .event-name { color: var(--tool-eligibility); }
+
+    .event-tool_call.process_refund { border-color: rgba(16,185,129,0.25); background: rgba(16,185,129,0.05); }
+    .event-tool_call.process_refund .event-icon { background: rgba(16,185,129,0.2); }
+    .event-tool_call.process_refund .event-name { color: var(--tool-approve); }
+
+    .event-tool_call.deny_refund { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.05); }
+    .event-tool_call.deny_refund .event-icon { background: rgba(239,68,68,0.2); }
+    .event-tool_call.deny_refund .event-name { color: var(--tool-deny); }
+
+    .event-tool_call.escalate_to_human { border-color: rgba(249,115,22,0.25); background: rgba(249,115,22,0.05); }
+    .event-tool_call.escalate_to_human .event-icon { background: rgba(249,115,22,0.2); }
+    .event-tool_call.escalate_to_human .event-name { color: var(--tool-escalate); }
+
+    .event-tool_result { border-color: rgba(255,255,255,0.06); background: rgba(255,255,255,0.02); }
+    .event-tool_result .event-name { color: var(--text-secondary); }
+
+    .event-final { border-color: rgba(16,185,129,0.2); background: rgba(16,185,129,0.04); }
+    .event-final .event-name { color: var(--color-success); }
+
+    .event-error { border-color: rgba(239,68,68,0.25); background: rgba(239,68,68,0.05); }
+    .event-error .event-name { color: var(--color-error); }
+
+    /* Log empty state */
+    .log-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-4);
+      color: var(--text-muted);
+      text-align: center;
+      padding: var(--space-8);
+    }
+    .log-empty-icon { font-size: 3rem; opacity: 0.25; }
+    .log-empty-title { font-size: 1rem; font-weight: 600; color: var(--text-secondary); }
+    .log-empty-text { font-size: 0.875rem; max-width: 280px; line-height: 1.7; }
+
+    /* Agent thinking animation */
+    .agent-thinking-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--radius-md);
+      background: rgba(139, 92, 246, 0.06);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+    }
+    .agent-thinking-bar.hidden { display: none; }
+    .thinking-label { font-size: 0.8125rem; color: #a78bfa; font-weight: 500; }
+
+    /* ── CRM panel (right) ───────────────────────────────── */
+    .crm-panel {
+      border-radius: var(--radius-lg);
+      background: var(--glass-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--glass-border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .crm-search {
+      padding: var(--space-3);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    #crm-search-input {
+      font-size: 0.875rem;
+    }
+
+    .crm-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-2);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .crm-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-3);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+      border: 1px solid transparent;
+    }
+    .crm-row:hover { background: rgba(255,255,255,0.04); border-color: var(--border-subtle); }
+
+    .crm-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      color: var(--text-inverse);
+    }
+
+    .crm-avatar.gold   { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .crm-avatar.silver { background: linear-gradient(135deg, #94a3b8, #64748b); }
+    .crm-avatar.bronze { background: linear-gradient(135deg, #cd7f32, #a0522d); }
+
+    .crm-info { flex: 1; min-width: 0; }
+    .crm-name {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .crm-email {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .crm-badges { display: flex; gap: 3px; flex-shrink: 0; }
+
+    /* Flag dot */
+    .flag-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--color-error);
+      flex-shrink: 0;
+      margin-top: 2px;
+      title: "Account flag";
+    }
+
+    /* ── Policy modal ────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--transition-base);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      width: 100%;
+      max-width: 680px;
+      max-height: 80vh;
+      border-radius: var(--radius-xl);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-default);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      transform: translateY(20px);
+      transition: transform var(--transition-base);
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title { font-weight: 700; font-size: 1.0625rem; }
+
+    .modal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: var(--space-5) var(--space-6);
+    }
+
+    .policy-text {
+      font-family: var(--font-mono);
+      font-size: 0.8125rem;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      white-space: pre-wrap;
+    }
+
+    /* ── Responsive ──────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .admin-layout {
+        grid-template-columns: 260px 1fr 280px;
+      }
+    }
+    @media (max-width: 900px) {
+      .admin-layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto auto auto;
+        height: auto;
+      }
+      .stats-row { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar" role="navigation" aria-label="Admin navigation">
+    <a href="/" class="navbar-brand" aria-label="RefundAI Home">
+      <div class="navbar-logo" aria-hidden="true">⚡</div>
+      <div>
+        <div class="navbar-title">RefundAI</div>
+        <div class="navbar-subtitle">Admin Dashboard</div>
+      </div>
+    </a>
+    <div class="navbar-links">
+      <a href="/" class="nav-link">Chat</a>
+      <a href="/admin" class="nav-link active" aria-current="page">Admin Panel</a>
+      <button id="policy-btn" class="btn btn-ghost" style="font-size:0.8125rem; padding:6px 14px;" aria-label="View refund policy">
+        📋 Policy
+      </button>
+    </div>
+  </nav>
+
+  <div class="admin-page">
+    <div class="admin-layout">
+
+      <!-- Stats row -->
+      <div class="stats-row" role="region" aria-label="Overview statistics">
+        <div class="stat-card">
+          <div class="stat-label">Active Sessions</div>
+          <div class="stat-value" id="stat-sessions">0</div>
+          <div class="stat-change">Total conversations</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tool Calls</div>
+          <div class="stat-value" id="stat-tool-calls">0</div>
+          <div class="stat-change">Across all sessions</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">CRM Customers</div>
+          <div class="stat-value" id="stat-customers">15</div>
+          <div class="stat-change">Mock database</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Approved</div>
+          <div class="stat-value text-success" id="stat-approved">0</div>
+          <div class="stat-change">Refunds processed</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Denied</div>
+          <div class="stat-value text-error" id="stat-denied">0</div>
+          <div class="stat-change">Policy violations</div>
+        </div>
+      </div>
+
+      <!-- Sessions panel -->
+      <div class="sessions-panel" role="region" aria-label="Active sessions">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Sessions</span>
+            <div class="pulse-dot" id="sessions-live-dot" style="opacity:0;" aria-hidden="true"></div>
+          </div>
+          <button id="refresh-sessions-btn" class="btn btn-ghost" style="font-size:0.75rem; padding:4px 10px;" aria-label="Refresh sessions">
+            ↻ Refresh
+          </button>
+        </div>
+        <div class="panel-body" id="sessions-list" role="list" aria-label="Session list">
+          <div class="no-sessions" id="no-sessions-msg">
+            <div class="no-sessions-icon" aria-hidden="true">💬</div>
+            <div class="no-sessions-text">No sessions yet.<br />Start a chat to see agent reasoning.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reasoning log -->
+      <div class="reasoning-panel" role="region" aria-label="Agent reasoning log">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>Reasoning Trace</span>
+          </div>
+          <div style="display:flex; gap:var(--space-2); align-items:center;">
+            <div id="active-session-label" style="font-size:0.75rem; font-family:var(--font-mono); color:var(--text-muted);"></div>
+            <button id="clear-log-btn" class="btn btn-ghost" style="font-size:0.75rem; padding:4px 10px;" aria-label="Clear log">Clear</button>
+          </div>
+        </div>
+
+        <!-- Agent thinking indicator -->
+        <div class="agent-thinking-bar hidden" id="thinking-bar" role="status" aria-live="polite" style="margin: var(--space-3); margin-bottom:0;">
+          <div class="typing-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+          <span class="thinking-label">Agent is reasoning…</span>
+        </div>
+
+        <div id="reasoning-log" role="log" aria-live="polite" aria-label="Reasoning events">
+          <div class="log-empty" id="log-empty-state">
+            <div class="log-empty-icon" aria-hidden="true">🧠</div>
+            <div class="log-empty-title">Select a session</div>
+            <div class="log-empty-text">
+              Click a session from the left panel to see the agent's tool calls and reasoning steps in real time.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CRM panel -->
+      <div class="crm-panel" role="region" aria-label="CRM database">
+        <div class="panel-header">
+          <div class="panel-title">CRM Database</div>
+          <span class="badge badge-info" style="font-size:0.6875rem;">15 profiles</span>
+        </div>
+        <div class="crm-search">
+          <input
+            type="text"
+            id="crm-search-input"
+            class="input"
+            placeholder="Search customers…"
+            aria-label="Search CRM customers"
+          />
+        </div>
+        <div class="crm-list" id="crm-list" role="list" aria-label="CRM customer list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Policy modal -->
+  <div class="modal-overlay" id="policy-modal" role="dialog" aria-modal="true" aria-label="Refund policy document">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">📋 Refund Policy</div>
+        <button id="close-policy-btn" class="btn btn-ghost btn-icon" aria-label="Close policy modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <pre class="policy-text" id="policy-text">Loading…</pre>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/admin.js"></script>
+</body>
+</html>
